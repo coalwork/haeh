@@ -1,0 +1,13 @@
+{
+  "name": "haeh",
+  "version": "1.0.0",
+  "description": "web app",
+  "main": "index.js",
+  "scripts": {
+    "test": "nodemon .",
+    "start": "node ."
+  },
+  "keywords": [],
+  "author": "me",
+  "license": "ISC"
+}
