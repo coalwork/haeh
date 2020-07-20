@@ -1,0 +1,1 @@
+:root{font-family:sans-serif;color:white}html,body{width:100%;height:100%;margin:0}body{display:flex;flex-direction:column;background-color:#222}body>*{padding:20px}h1,p{margin:0}a,button,.hoverable{transition:color 0.2s, background-color 0.2s, outline-color, 0.2s}
