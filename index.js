@@ -1,6 +1,9 @@
+const fs = require('fs');
+const ejs = require('ejs');
+const path = require('path');
+const bcrypt = require('bcrypt');
 const express = require('express');
 const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const { body, validationResult } = require('express-validator');
 
@@ -25,12 +28,19 @@ const User = require('./models/User');
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 const getUsers = async () => await User.find({});
 
+app.set('view engine', 'ejs');
+
 app.use(express.static('public'));
+
+app.get('/login.html', (req, res) => {
+  const file = fs.readFileSync(path.join(__dirname, 'public', '.login.html.ejs')).toString();
+  res.send(ejs.render(file, { errors: JSON.parse(req.query.errors || '[]')}));
+});
 
 app.post('/register', urlencodedParser, [
   body('username', 'Username may not be shorter than 3 characters').isLength({ min: 3 }),
   body('username', 'Username may not be longer than 16 characters').isLength({ max: 16 }),
-  body('password', 'Password is required').exists(),
+  body('password', 'Password is required').exists({ checkFalsy: true }),
   body('password', 'Password may not be longer than 128 characters').isLength({ max: 128 }),
   body('username').custom(async username => {
     const usernames = (await getUsers()).map(user => user.username);
@@ -41,19 +51,24 @@ app.post('/register', urlencodedParser, [
   })
 ], async (req, res) => {
   const redirectUrl = req.query.redirectUrl || `/profile/${req.body.username}`;
+  const errorRedirectUrl = req.query.errorRedirectUrl || '/login.html';
   const errors = validationResult(req);
-  const errorsJSON = JSON.stringify(errors.array);
-  if (!errors.isEmpty()) return res.status(400).redirect(`${redirectUrl}?errors=${encodeURIComponent(errorsJSON)}`);
+  const errorsJSON = JSON.stringify(errors.array().map(error => {
+    if (error.param === 'password') delete error.value;
+    return error;
+  }));
+  if (!errors.isEmpty()) return res.status(400).redirect(`${errorRedirectUrl}?errors=${encodeURIComponent(errorsJSON)}`);
 
   const { username, password } = req.body;
 
   try {
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hash });
+    throw Error('bruh moment');
 
     await user.save();
   } catch (error) {
-    return res.status(500).redirect(`${redirectUrl}?serverError=${encodeURIComponent(error.message)}`);
+    return res.status(500).redirect(`${errorRedirectUrl}?serverError=${encodeURIComponent(error.message)}`);
   }
 
   console.log(`Successfully saved user '${username}' to database`);

@@ -16,7 +16,7 @@ main
   width: 45%
   min-width: 350px
 
-  > *:nth-child(even)
+  > input[type=text], input[type=password]
     margin-bottom: 10px
 
 #same-line
@@ -46,6 +46,7 @@ main
 
 #register-login-picker
   padding: 0 !important
+  cursor: pointer
   position: relative
   display: flex
 
@@ -67,3 +68,28 @@ main
 
     &.toggled
       left: 5em
+
+#errors
+  .error
+    display: flex
+    background-color: crimson
+    font-size: 1em
+    margin-top: 7px
+    padding: 8px
+    border: 4px solid white
+    border-radius: 4px
+    color: white
+    align-items: center
+
+    .icon
+      content: '!'
+      text-align: center
+      font-weight: bold
+      font-size: 0.9em
+      padding: 2px
+      margin-right: 0.5em
+      display: inline-block
+      width: 1em
+      height: 1em
+      border: 3px solid white
+      border-radius: 50%
