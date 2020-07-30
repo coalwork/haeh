@@ -70,6 +70,11 @@ main
       left: 5em
 
 #errors
+  #hide
+    display: block
+    cursor: pointer
+    text-align: center
+
   .error
     display: flex
     background-color: crimson
@@ -80,6 +85,9 @@ main
     border-radius: 4px
     color: white
     align-items: center
+
+    &#server-error
+      background-color: adjust-hue(crimson, 50)
 
     .icon
       content: '!'

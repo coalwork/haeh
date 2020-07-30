@@ -27,6 +27,12 @@ const User = require('./models/User');
 
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 const getUsers = async () => await User.find({});
+const authValidation = [
+  body('username', 'Username may not be shorter than 3 characters').isLength({ min: 3 }),
+  body('username', 'Username may not be longer than 16 characters').isLength({ max: 16 }),
+  body('password', 'Password is required').exists({ checkFalsy: true }),
+  body('password', 'Password may not be longer than 128 characters').isLength({ max: 128 })
+];
 
 app.set('view engine', 'ejs');
 
@@ -34,14 +40,11 @@ app.use(express.static('public'));
 
 app.get('/login.html', (req, res) => {
   const file = fs.readFileSync(path.join(__dirname, 'public', '.login.html.ejs')).toString();
-  res.send(ejs.render(file, { errors: JSON.parse(req.query.errors || '[]')}));
+  res.send(ejs.render(file, { errors: JSON.parse(req.query.errors || '[]'), serverError: req.query.serverError || '' }));
 });
 
 app.post('/register', urlencodedParser, [
-  body('username', 'Username may not be shorter than 3 characters').isLength({ min: 3 }),
-  body('username', 'Username may not be longer than 16 characters').isLength({ max: 16 }),
-  body('password', 'Password is required').exists({ checkFalsy: true }),
-  body('password', 'Password may not be longer than 128 characters').isLength({ max: 128 }),
+  ...authValidation,
   body('username').custom(async username => {
     const usernames = (await getUsers()).map(user => user.username);
 
@@ -64,7 +67,6 @@ app.post('/register', urlencodedParser, [
   try {
     const hash = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hash });
-    throw Error('bruh moment');
 
     await user.save();
   } catch (error) {

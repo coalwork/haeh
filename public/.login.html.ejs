@@ -33,6 +33,18 @@
           overlay.addClass('toggled');
           form.attr('action', '/register');
         });
+
+        $('#errors > span').click(({ target }) => {
+          $(target).toggleClass('toggled');
+
+          if ($(target).hasClass('toggled')) {
+            $(target).text($(target).text().replace('\u25BC', '\u25B2'));
+            $('.error').hide();
+          } else {
+            $(target).text($(target).text().replace('\u25B2', '\u25BC'));
+            $('.error').show();
+          }
+        });
       });
     </script>
   </head>
@@ -55,9 +67,15 @@
           </button>
         </div>
         <div id="errors">
+          <% if (errors.length > 0) { %>
+            <span id="hide">Hide&ThinSpace;&#x25BC;</span>
+          <% } %>
           <% errors.forEach(error => { %>
             <p class="error"><span class="icon">!</span><span><%= error.msg %></span></p>
           <% }); %>
+          <% if (serverError.length !== 0) { %>
+            <p id="server-error" class="error"><span class="icon">!</span><span>Something unexpected occured, try again later</span></p>
+          <% } %>
         </div>
       </form>
     </main>
