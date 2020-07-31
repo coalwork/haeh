@@ -34,15 +34,22 @@
           form.attr('action', '/register');
         });
 
-        $('#errors > span').click(({ target }) => {
+        let initHeight;
+
+        $('.error').ready(() => {
+          initHeight = $('#errors').innerHeight();
+          $('#errors').css('height', `${initHeight}px`);
+        });
+
+        $('#hide').click(({ target }) => {
           $(target).toggleClass('toggled');
 
           if ($(target).hasClass('toggled')) {
             $(target).text($(target).text().replace('\u25BC', '\u25B2'));
-            $('.error').hide();
+            $('#errors').css('height', '0');
           } else {
             $(target).text($(target).text().replace('\u25B2', '\u25BC'));
-            $('.error').show();
+            $('#errors').css('height', `${initHeight}px`);
           }
         });
       });
@@ -66,10 +73,10 @@
             <span>Submit</span>
           </button>
         </div>
+        <% if (errors.length > 0) { %>
+          <span id="hide">Hide&ThinSpace;&#x25BC;</span>
+        <% } %>
         <div id="errors">
-          <% if (errors.length > 0) { %>
-            <span id="hide">Hide&ThinSpace;&#x25BC;</span>
-          <% } %>
           <% errors.forEach(error => { %>
             <p class="error"><span class="icon">!</span><span><%= error.msg %></span></p>
           <% }); %>

@@ -69,11 +69,14 @@ main
     &.toggled
       left: 5em
 
+#hide
+  display: block
+  cursor: pointer
+  text-align: center
+
 #errors
-  #hide
-    display: block
-    cursor: pointer
-    text-align: center
+  overflow-y: hidden
+  transition: height 0.2s
 
   .error
     display: flex
