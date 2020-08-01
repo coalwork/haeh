@@ -84,9 +84,22 @@ passport.deserializeUser(function(id, done) {
 
 app.use(express.static('public'));
 
-app.get('/login.html', (req, res) => {
-  const file = fs.readFileSync(path.join(__dirname, 'public', '.login.html.ejs')).toString();
-  res.send(ejs.render(file, { errors: JSON.parse(req.query.errors || '[]'), serverError: req.query.serverError || '' }));
+app.get('/', (req, res) => {
+  res.redirect('/index.html');
+});
+
+app.get('/index.html', async (req, res) => {
+  res.send(await ejs.renderFile(path.join(__dirname, 'public', '.index.html.ejs')));
+});
+
+app.get('/login.html', async (req, res) => {
+  const filename = path.join(__dirname, 'public', '.login.html.ejs');
+  res.send(await ejs.renderFile(filename, 
+    {
+      errors: JSON.parse(req.query.errors || '[]'),
+      serverError: req.query.serverError || ''
+    }
+  ));
 });
 
 app.post('/login', urlencodedParser, [
