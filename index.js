@@ -56,6 +56,7 @@ passport.use(new LocalStrategy(async (username, password, done) => {
     return done(err);
   }
 
+  console.log(`User ${user.username} has successfully logged in`);
   return done(null, user);
 }));
 
@@ -83,18 +84,9 @@ passport.deserializeUser(function(id, done) {
 
 app.use(express.static('public'));
 
-app.get('/test', (req, res) => {
-  console.log(req.sessionID);
-  res.send('debugging\n');
-});
-
 app.get('/login.html', (req, res) => {
   const file = fs.readFileSync(path.join(__dirname, 'public', '.login.html.ejs')).toString();
   res.send(ejs.render(file, { errors: JSON.parse(req.query.errors || '[]'), serverError: req.query.serverError || '' }));
-});
-
-app.get('/home.html', (req, res) => {
-  
 });
 
 app.post('/login', urlencodedParser, [
