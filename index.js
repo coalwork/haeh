@@ -38,6 +38,7 @@ const authValidation = [
   body('password', 'Password is required').exists({ checkFalsy: true }),
   body('password', 'Password may not be longer than 128 characters').isLength({ max: 128 })
 ];
+const public = path.join(__dirname, 'public');
 
 passport.use(new LocalStrategy(async (username, password, done) => {
   let user;
@@ -46,17 +47,16 @@ passport.use(new LocalStrategy(async (username, password, done) => {
   try {
     user = await User.findOne({ username });
 
-    if (!user) return done(null, false);
+    if (!user) return done(null, false, { msg: `Could not find user '${username}'` });
 
     match = await bcrypt.compare(password, user.password);
 
-    if (!match) return done(null, false);
+    if (!match) return done(null, false, { msg: 'Incorrect password' });
 
   } catch (err) {
-    return done(err);
+    return done(err, { msg: 'Something unexpected occurred' });
   }
 
-  console.log(`User ${user.username} has successfully logged in`);
   return done(null, user);
 }));
 
@@ -88,23 +88,70 @@ app.get('/', (req, res) => {
   res.redirect('/index.html');
 });
 
-app.get('/index.html', async (req, res) => {
-  res.send(await ejs.renderFile(path.join(__dirname, 'public', '.index.html.ejs')));
+app.get('/login.html', async (req, res, next) => {
+  res.locals.templateStrings = {
+    errors: JSON.parse(req.query.errors || '[]'),
+    serverError: req.query.serverError || ''
+  };
+
+  next();
 });
 
-app.get('/login.html', async (req, res) => {
-  const filename = path.join(__dirname, 'public', '.login.html.ejs');
-  res.send(await ejs.renderFile(filename, 
-    {
-      errors: JSON.parse(req.query.errors || '[]'),
-      serverError: req.query.serverError || ''
-    }
-  ));
+app.get('/home.html', async (req, res, next) => {
+  if (!req.isAuthenticated()) {
+    res.locals.statusCode = 401;
+    return next();
+  }
+
+  let username = req.user.username;
+  res.locals.templateStrings = { username };
+  next();
 });
 
-app.post('/login', urlencodedParser, [
-  ...authValidation
-], passport.authenticate('local', { successRedirect: '/', failureRedirect: '/login.html' })
+app.use(async (req, res, next) => {
+  if (res.locals.statusCode) return next();
+
+  const match = req.path.match(/(\w+)\.html$/);
+
+  if (match) {
+    res.send(await ejs.renderFile(
+      path.join(public, `.${match[1]}.html.ejs`),
+      res.locals.templateStrings || {}
+    ));
+
+    return res.locals.templateStrings = null;
+  }
+
+  next();
+});
+
+app.post('/login',
+  urlencodedParser,
+  // authValidation,
+  (req, res) => {
+    passport.authenticate('local', (err, user, info) => {
+      if (info) {
+        const error = Object.assign({}, info);
+        Object.defineProperty(error, 'msg', Object.getOwnPropertyDescriptor(error, 'message'));
+        delete error.message;
+
+        const errorJSON = JSON.stringify([error]);
+
+        return res.redirect(`/login.html?errors=${encodeURIComponent(errorJSON)}`);
+      }
+
+      req.login(user, err => {
+        if (err) {
+          console.error(err);
+          return res.redirect(`/login.html?serverError=${encodeURIComponent(err.message)}`);
+        }
+
+        console.log(`User '${user.username}' has successfully logged in`);
+
+        res.redirect('/home.html');
+      });
+    })(req, res);
+  }
 );
 
 app.post('/register', urlencodedParser, [
@@ -117,7 +164,7 @@ app.post('/register', urlencodedParser, [
     return true;
   })
 ], async (req, res) => {
-  const redirectUrl = req.query.redirectUrl || `/home`;
+  const redirectUrl = req.query.redirectUrl || `/home.html`;
   const errorRedirectUrl = req.query.errorRedirectUrl || '/login.html';
   const errors = validationResult(req);
   const errorsJSON = JSON.stringify(errors.array().map(error => {
@@ -138,7 +185,40 @@ app.post('/register', urlencodedParser, [
   }
 
   console.log(`Successfully saved user '${username}' to database`);
-  res.status(201).redirect(redirectUrl);
+
+  passport.authenticate('local', (err, user, info) => {
+    if (info) {
+      const error = Object.assign({}, info);
+      Object.defineProperty(error, 'msg', Object.getOwnPropertyDescriptor(error, 'message'));
+      delete error.message;
+
+      const errorJSON = JSON.stringify([error]);
+
+      return res.redirect(`/login.html?errors=${encodeURIComponent(errorJSON)}`);
+    }
+
+    req.login(user, err => {
+      if (err) return res.redirect(`${errorRedirectUrl}?serverError=${err.message}`);
+      console.log(`User '${username}' has successfully logged in`);
+
+      res.redirect('/home.html');
+    });
+  })(req, res);
+});
+
+app.use((req, res, next) => {
+  if (!res.locals.statusCode) res.locals.statusCode = 404;
+  next();
+});
+
+app.use(async (req, res, next) => {
+  if (!res.locals.statusCode) return next();
+
+  res.send(await ejs.renderFile(path.join(public, '.error.html.ejs'),
+    {
+      errorCode: res.locals.statusCode
+    }
+  ));
 });
 
 app.listen(PORT, err => {

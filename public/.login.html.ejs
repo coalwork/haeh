@@ -75,11 +75,12 @@
           <span id="hide">Hide&ThinSpace;&#x25BC;</span>
         <% } %>
         <div id="errors">
-          <% errors.forEach(error => { %>
+          <% if (!(errors instanceof Array)) console.warn('Warning: errors not passed as array') %>
+          <% (errors instanceof Array ? errors : []).forEach(error => { %>
             <p class="error"><span class="icon">!</span><span><%= error.msg %></span></p>
           <% }); %>
           <% if (serverError.length !== 0) { %>
-            <p id="server-error" class="error"><span class="icon">!</span><span>Something unexpected occured, try again later</span></p>
+            <p id="server-error" class="error"><span class="icon">!</span><span>Something unexpected occurred, try again later</span></p>
           <% } %>
         </div>
       </form>
