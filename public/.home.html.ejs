@@ -11,9 +11,15 @@
     </script>
   </head>
   <body>
-    <%- include('assets/headernav.html.ejs') %>
+    <%
+      let strings = {};
+      try {
+        if (user) strings = user;
+      } catch(err) {}
+    %>
+    <%- include('assets/headernav.html.ejs', strings); %>
     <main>
-      <p>Welcome, <%= username  %></p>
+      <p>Welcome, <%= user.username  %></p>
     </main>
   </body>
 </html>

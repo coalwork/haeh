@@ -1,7 +1,8 @@
 <%
   const errors = {
     404: ['Not Found', 'Sorry, we couldn\'t find that page'],
-    401: ['Unauthorized', 'Sorry, you can\'t access this page without authorization']
+    401: ['Unauthorized', 'Sorry, you can\'t access this page without authorization'],
+    403: ['Forbidden', 'Sorry, you can\'t access this page']
   };
 %>
 
@@ -18,7 +19,13 @@
     </script>
   </head>
   <body>
-    <%- include('assets/headernav.html.ejs') %>
+    <%
+      let strings = {};
+      try {
+        if (user) strings = user;
+      } catch(err) {}
+    %>
+    <%- include('assets/headernav.html.ejs', strings); %>
     <main>
       <h1 style="font-size: 4em; white-space: nowrap"><%= errorCode %> <%= errors[errorCode][0] %></h1>
       <p style="margin-top: 1em; font-size: 1.2em"><%= errors[errorCode][1] %></p>

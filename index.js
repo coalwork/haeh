@@ -23,7 +23,13 @@ mongoose.connect(`mongodb+srv://coalwork:${process.env.MONGOPASS}@web2-4m1qk.gcp
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'Connection error:'));
-db.once('open', () => console.log('Mongoose has successfully connected'));
+db.once('open', () => {
+  console.log('Mongoose has successfully connected');
+  app.listen(PORT, err => {
+    if (err) throw err;
+    console.log(`App is listening on port ${PORT}`);
+  });
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -82,6 +88,12 @@ passport.deserializeUser(function(id, done) {
   });
 });
 
+app.use((req, res, next) => {
+  if (!res.locals.templateStrings)
+    res.locals.templateStrings = {};
+  next();
+});
+
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
@@ -100,11 +112,21 @@ app.get('/login.html', async (req, res, next) => {
 app.get('/home.html', async (req, res, next) => {
   if (!req.isAuthenticated()) {
     res.locals.statusCode = 401;
-    return next();
   }
+  next();
+});
 
-  let username = req.user.username;
-  res.locals.templateStrings = { username };
+app.get('/logout.html', async (req, res, next) => {
+  if (req.isAuthenticated()) {
+    res.locals.statusCode = 403;
+  }
+  next();
+});
+
+app.use((req, res, next) => {
+  if (req.isAuthenticated()) {
+    res.locals.templateStrings.user = { username: req.user.username };
+  }
   next();
 });
 
@@ -119,7 +141,7 @@ app.use(async (req, res, next) => {
       res.locals.templateStrings || {}
     ));
 
-    return res.locals.templateStrings = null;
+    return res.locals.templateStrings = {};
   }
 
   next();
@@ -131,13 +153,13 @@ app.post('/login',
   (req, res) => {
     passport.authenticate('local', (err, user, info) => {
       if (info) {
-        const error = Object.assign({}, info);
-        Object.defineProperty(error, 'msg', Object.getOwnPropertyDescriptor(error, 'message'));
-        delete error.message;
-
-        const errorJSON = JSON.stringify([error]);
+        const errorJSON = JSON.stringify([info]);
 
         return res.redirect(`/login.html?errors=${encodeURIComponent(errorJSON)}`);
+      }
+
+      if (err) {
+        return res.redirect(`/login.html?serverError=${encodeURIComponent(err.message)}`)
       }
 
       req.login(user, err => {
@@ -197,6 +219,10 @@ app.post('/register', urlencodedParser, [
       return res.redirect(`/login.html?errors=${encodeURIComponent(errorJSON)}`);
     }
 
+    if (err) {
+      return res.redirect(`${errorRedirectUrl}?serverError${encodeURIComponent(err.message)}`)
+    }
+
     req.login(user, err => {
       if (err) return res.redirect(`${errorRedirectUrl}?serverError=${err.message}`);
       console.log(`User '${username}' has successfully logged in`);
@@ -204,6 +230,14 @@ app.post('/register', urlencodedParser, [
       res.redirect('/home.html');
     });
   })(req, res);
+});
+
+app.get('/logout', (req, res, next) => {
+  if (!req.isAuthenticated()) (res.locals.statusCode = 401) && next();
+  const { username } = req.user;
+  req.logout();
+  console.log(`${username} has been successfully logged out`);
+  res.redirect('/logout.html');
 });
 
 app.use((req, res, next) => {
@@ -214,16 +248,13 @@ app.use((req, res, next) => {
 app.use(async (req, res, next) => {
   if (!res.locals.statusCode) return next();
 
-  res.send(await ejs.renderFile(path.join(public, '.error.html.ejs'),
-    {
-      errorCode: res.locals.statusCode
-    }
-  ));
-});
+  console.log(res.locals.templateStrings);
 
-app.listen(PORT, err => {
-  if (err) throw err;
-  console.log(`App is listening on port ${PORT}`);
+  res.locals.templateStrings.errorCode = res.locals.statusCode;
+
+  res.send(await ejs.renderFile(path.join(public, '.error.html.ejs'),
+    res.locals.templateStrings
+  ));
 });
 
 process.on('exit', mongoose.disconnect);

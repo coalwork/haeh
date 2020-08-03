@@ -55,7 +55,13 @@
     </script>
   </head>
   <body>
-    <%- include('assets/headernav.html.ejs') %>
+    <%
+      let strings = {};
+      try {
+        if (user) strings = user;
+      } catch(err) {}
+    %>
+    <%- include('assets/headernav.html.ejs', strings); %>
     <main>
       <form id="login" action="/login" method="POST">
         <label for="username">Username</label>
@@ -77,7 +83,7 @@
         <div id="errors">
           <% if (!(errors instanceof Array)) console.warn('Warning: errors not passed as array') %>
           <% (errors instanceof Array ? errors : []).forEach(error => { %>
-            <p class="error"><span class="icon">!</span><span><%= error.msg %></span></p>
+            <p class="error"><span class="icon">!</span><span><%= error.msg || error.message %></span></p>
           <% }); %>
           <% if (serverError.length !== 0) { %>
             <p id="server-error" class="error"><span class="icon">!</span><span>Something unexpected occurred, try again later</span></p>

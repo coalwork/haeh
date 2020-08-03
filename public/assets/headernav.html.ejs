@@ -4,7 +4,22 @@
 </header>
 <nav class="main" style="display: none">
   <a href="/">Home</a>
+  <%
+    do {
+      try {
+        username;
+      } catch(err) {
+        break;
+      } %>
+      <a href="/home.html">Profile</a>
+  <% } while (false); %>
   <span style="flex: 1"></span>
-  <a href="/login.html">Log In/Register</a>
+  <%
+    try {
+      username; %>
+      <a href="/logout">Log Out</a>
+  <% } catch(err) { %>
+      <a href="/login.html">Log In/Register</a>
+  <% } %>
   <link rel="stylesheet" href="/assets/styles/nav.min.css" onload="$('nav.main').show()">
 </nav>
