@@ -1,0 +1,26 @@
+@import '../palette'
+
+#users
+  text-align: left
+  table-layout: fixed
+  width: 100%
+  border-spacing: 0
+
+  thead > tr
+
+  tbody > tr
+    &:nth-child(even)
+      background-color: $dark-secondary
+
+  td
+    padding: 5px 10px
+
+  th
+    padding: 10px
+    background-color: $main-color
+    border-top: 2px solid transparent
+
+    &:first-child
+      border-top-left-radius: 8px
+    &:last-child
+      border-top-right-radius: 8px

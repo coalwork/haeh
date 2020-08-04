@@ -23,9 +23,12 @@ mongoose.connect(`mongodb+srv://coalwork:${process.env.MONGOPASS}@web2-4m1qk.gcp
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'Connection error:'));
+
+// Once mongoose connects to database the app listens on PORT
+let server;
 db.once('open', () => {
   console.log('Mongoose has successfully connected');
-  app.listen(PORT, err => {
+  server = app.listen(PORT, err => {
     if (err) throw err;
     console.log(`App is listening on port ${PORT}`);
   });
@@ -96,9 +99,7 @@ app.use((req, res, next) => {
 
 app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-  res.redirect('/index.html');
-});
+app.get('/', (req, res) => res.redirect('/index.html'));
 
 app.get('/login.html', async (req, res, next) => {
   res.locals.templateStrings = {
@@ -123,6 +124,13 @@ app.get('/logout.html', async (req, res, next) => {
   next();
 });
 
+app.get('/users.html', async (req, res, next) => {
+  res.locals.templateStrings = {
+    users: await getUsers()
+  };
+  next();
+});
+
 app.use((req, res, next) => {
   if (req.isAuthenticated()) {
     res.locals.templateStrings.user = { username: req.user.username };
@@ -135,9 +143,18 @@ app.use(async (req, res, next) => {
 
   const match = req.path.match(/(\w+)\.html$/);
 
+  if (!match) return next();
+
+  const filepath = path.join(public, `.${match[1]}.html.ejs`);
+
+  if (!require('fs').existsSync(filepath)) {
+    res.locals.statusCode = 404;
+    return next();
+  }
+
   if (match) {
     res.send(await ejs.renderFile(
-      path.join(public, `.${match[1]}.html.ejs`),
+      filepath,
       res.locals.templateStrings || {}
     ));
 
@@ -236,7 +253,7 @@ app.get('/logout', (req, res, next) => {
   if (!req.isAuthenticated()) (res.locals.statusCode = 401) && next();
   const { username } = req.user;
   req.logout();
-  console.log(`${username} has been successfully logged out`);
+  console.log(`'${username}' has been successfully logged out`);
   res.redirect('/logout.html');
 });
 
@@ -247,8 +264,6 @@ app.use((req, res, next) => {
 
 app.use(async (req, res, next) => {
   if (!res.locals.statusCode) return next();
-
-  console.log(res.locals.templateStrings);
 
   res.locals.templateStrings.errorCode = res.locals.statusCode;
 
