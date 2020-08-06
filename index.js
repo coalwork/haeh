@@ -42,6 +42,7 @@ db.once('open', async () => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const PRODUCTION = process.env.PRODUCTION || false;
 
 const User = require('./models/User');
 const Chat = require('./models/Chat');
@@ -120,6 +121,14 @@ passport.use(new LocalStrategy(async (username, password, done) => {
 }));
 
 app.set('view engine', 'ejs');
+
+// Production middleware
+app.use((req, res, next) => {
+  if (req.hostname !== 'haeh.herokuapp.com' && PRODUCTION)
+    return res.send('Invalid hostname');
+
+  next();
+});
 
 app.use(sessionMiddleware);
 app.use(passport.initialize());
