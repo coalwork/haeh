@@ -65,9 +65,9 @@
     <main>
       <form id="login" action="/login" method="POST">
         <label for="username">Username</label>
-        <input type="text" name="username">
+        <input type="text" name="username" required maxlength="16">
         <label for="password">Password</label>
-        <input type="password" name="password">
+        <input type="password" name="password" required maxlength="128">
         <div id="same-line">
           <button id="register-login-picker" type="button">
             <span id="btn-1" class="toggled">Log In</span><span id="btn-2">Register</span

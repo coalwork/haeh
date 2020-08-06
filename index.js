@@ -1,7 +1,9 @@
 const { v4: uuid } = require('uuid');
+const { EventEmitter } = require('events');
 const { Strategy: LocalStrategy } = require('passport-local');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
+const socket = require('socket.io');
 const ejs = require('ejs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
@@ -25,12 +27,16 @@ const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'Connection error:'));
 
 // Once mongoose connects to database the app listens on PORT
+let io;
 let server;
-db.once('open', () => {
+const ioEventEmitter = new EventEmitter();
+db.once('open', async () => {
   console.log('Mongoose has successfully connected');
   server = app.listen(PORT, err => {
     if (err) throw err;
     console.log(`App is listening on port ${PORT}`);
+    io = socket(server);
+    ioEventEmitter.emit('ready');
   });
 });
 
@@ -38,6 +44,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 const User = require('./models/User');
+const Chat = require('./models/Chat');
 
 const urlencodedParser = bodyParser.urlencoded({ extended: false });
 const getUsers = async () => await User.find({});
@@ -48,6 +55,49 @@ const authValidation = [
   body('password', 'Password may not be longer than 128 characters').isLength({ max: 128 })
 ];
 const public = path.join(__dirname, 'public');
+const sessionMiddleware = session({
+  genid: () => uuid(),
+  secret: process.env.TOKEN || require('crypto').randomBytes(48).toString('hex'),
+  store: new LokiStore(),
+  resave: false,
+  saveUninitialized: true
+});
+
+// This is where all the chat stuff happens
+ioEventEmitter.on('ready', () => {
+  io.use((socket, next) => {
+    sessionMiddleware(socket.request, socket.request.res || {}, next);
+  });
+
+  io.on('connection', async socket => {
+    socket.on('chat', async ({ message, date }) => {
+      switch (true) {
+        case !message:
+        case message.length === 0:
+        case message.replace(/\s/g, '').length === 0:
+        case !date:
+        case new Date(date).toString() === 'Invalid Date':
+        case !socket.request.session.passport.user:
+          return;
+      }
+
+      const user = (await User.findById(socket.request.session.passport.user)).username;
+      const chat = new Chat({ user, message, date });
+
+      try {
+        await chat.save();
+      } catch (error) {
+        return console.error(error);
+      }
+
+      io.emit('chat', await Chat.find({}));
+    });
+
+    socket.on('chats', async () => {
+      io.emit('chat', await Chat.find({}));
+    });
+  });
+});
 
 passport.use(new LocalStrategy(async (username, password, done) => {
   let user;
@@ -71,21 +121,15 @@ passport.use(new LocalStrategy(async (username, password, done) => {
 
 app.set('view engine', 'ejs');
 
-app.use(session({
-  genid: () => uuid(),
-  secret: process.env.TOKEN || require('crypto').randomBytes(48).toString('hex'),
-  store: new LokiStore(),
-  resave: false,
-  saveUninitialized: true
-}));
+app.use(sessionMiddleware);
 app.use(passport.initialize());
 app.use(passport.session());
 
-passport.serializeUser(function(user, done) {
+passport.serializeUser(function (user, done) {
   done(null, user.id);
 });
 
-passport.deserializeUser(function(id, done) {
+passport.deserializeUser(function (id, done) {
   User.findById(id, function(err, user) {
     done(err, user);
   });
@@ -97,9 +141,19 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static('public'));
+app.use((req, res, next) => {
+  if (req.path.match(/\.ejs$/)) res.locals.statusCode = 404;
+  next();
+});
+
+app.use((req, res, next) => {
+  if (res.locals.statusCode) return next();
+  express.static('public')(req, res, next);
+});
 
 app.get('/', (req, res) => res.redirect('/index.html'));
+
+app.get(/\/favicon(\.\w{3})?/, (req, res) => res.sendFile(path.join(public, 'favicon.png')));
 
 app.get('/login.html', async (req, res, next) => {
   res.locals.templateStrings = {
@@ -110,7 +164,7 @@ app.get('/login.html', async (req, res, next) => {
   next();
 });
 
-app.get('/home.html', async (req, res, next) => {
+app.get(/^\/(home|chat).html/, async (req, res, next) => {
   if (!req.isAuthenticated()) {
     res.locals.statusCode = 401;
   }
@@ -145,7 +199,7 @@ app.use(async (req, res, next) => {
 
   if (!match) return next();
 
-  const filepath = path.join(public, `.${match[1]}.html.ejs`);
+  const filepath = path.join(public, `${match[1]}.html.ejs`);
 
   if (!require('fs').existsSync(filepath)) {
     res.locals.statusCode = 404;
@@ -267,7 +321,7 @@ app.use(async (req, res, next) => {
 
   res.locals.templateStrings.errorCode = res.locals.statusCode;
 
-  res.send(await ejs.renderFile(path.join(public, '.error.html.ejs'),
+  res.send(await ejs.renderFile(path.join(public, 'error.html.ejs'),
     res.locals.templateStrings
   ));
 });

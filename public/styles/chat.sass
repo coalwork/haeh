@@ -1,0 +1,49 @@
+@import '../palette'
+
+main
+  display: flex
+  flex: 1
+
+#chat-container
+  display: flex
+  flex-direction: column
+  flex: 1
+
+#chat-window
+  flex: 1
+  background-color: $dark-secondary
+  border-radius: 20px 20px 0 0
+  padding: 20px
+
+.chat
+  line-height: 140%
+  width: -moz-fit-content
+  width: fit-content
+
+  #chat-date
+    display: inline-block
+    white-space: nowrap
+    overflow-x: hidden
+    vertical-align: bottom
+    width: 0
+    transition: 0.2s width
+
+#chat
+  display: flex
+  border: 2px solid white
+
+  input
+    padding: 6px 4px
+    flex: 1
+    border: none
+
+  button
+    background: $main-color
+    color: white
+    border: none
+    font-weight: bold
+    padding: 6px 12px
+    cursor: pointer
+
+    &:hover
+      background-color: darken($main-color, 15%)
