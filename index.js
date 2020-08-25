@@ -126,6 +126,7 @@ app.set('view engine', 'ejs');
 app.use((req, res, next) => {
   if (!PRODUCTION) return next();
   if (req.hostname !== 'haeh.herokuapp.com') return res.send('Invalid hostname');
+  return next();
 });
 
 app.use(sessionMiddleware);
