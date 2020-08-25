@@ -12,6 +12,11 @@
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
     <script src="scripts/chat.js"></script>
+    <script defer>
+      const chatWindow = $('#chatwindow');
+
+      chatWindow.css('max-height', `${chatWindow.height()}px`);
+    </script>
   </head>
   <body>
     <%

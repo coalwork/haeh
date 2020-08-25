@@ -42,7 +42,7 @@ db.once('open', async () => {
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const PRODUCTION = process.env.PRODUCTION || false;
+const PRODUCTION = !process.env.PRODUCTION || false;
 
 const User = require('./models/User');
 const Chat = require('./models/Chat');
@@ -124,10 +124,8 @@ app.set('view engine', 'ejs');
 
 // Production middleware
 app.use((req, res, next) => {
-  if (req.hostname !== 'haeh.herokuapp.com' && PRODUCTION)
-    return res.send('Invalid hostname');
-
-  next();
+  if (!PRODUCTION) return next();
+  if (req.hostname !== 'haeh.herokuapp.com') return res.send('Invalid hostname');
 });
 
 app.use(sessionMiddleware);
